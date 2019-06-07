@@ -67,54 +67,29 @@ function AddProductForm({ onAddProduct }) {
   );
 }
 
-function productsReducer(products, action) {
-  switch (action.type) {
-    case 'ADD_PRODUCT':
-      return [...products, action.product];
-    case 'DELETE_PRODUCT':
-      return products.filter(product => product.id !== action.product.id);
-    default:
-      return products;
-  }
-}
-
-// function userProductsReducer(userProducts, action) {
+// function productsReducer(products, action) {
 //   switch (action.type) {
-//     case 'ADD_PRODUCT': {
-//       const { user, product } = action;
-//       return {
-//         ...userProducts,
-//         [user]: [...(userProducts[user] || []), product],
-//       };
-//     }
-//     case 'DELETE_PRODUCT': {
-//       const { user, product } = action;
-//       return {
-//         ...userProducts,
-//         [user]: userProducts[user].filter(
-//           userProduct => userProduct.id !== product.id
-//         ),
-//       };
-//     }
+//     case 'ADD_PRODUCT':
+//       return [...products, action.product];
+//     case 'DELETE_PRODUCT':
+//       return products.filter(product => product.id !== action.product.id);
 //     default:
-//       return userProducts;
+//       return products;
 //   }
 // }
 
-function Home({ user, onLogOut }) {
+function Home({ user, products, onAddProduct, onDeleteProduct, onLogOut }) {
   const [productId, setProductId] = React.useState(0);
-  const [userProducts, dispatch] = React.useReducer(productsReducer, []);
-  const products = userProducts[user];
   const greeting = user ? `Hello ${user}` : 'Hello';
 
   function handleAddProduct(newProduct) {
     const product = { ...newProduct, id: productId };
-    dispatch({ type: 'ADD_PRODUCT', product });
+    onAddProduct(product);
     setProductId(prevProductId => prevProductId + 1);
   }
 
   function handleDeleteProduct(product) {
-    dispatch({ type: 'DELETE_PRODUCT', product });
+    onDeleteProduct(product);
   }
 
   return (
@@ -189,25 +164,72 @@ function appReducer(state, action) {
   }
 }
 
+function userProductsReducer(userProducts, action) {
+  switch (action.type) {
+    case 'ADD_PRODUCT': {
+      const { user, product } = action;
+      return {
+        ...userProducts,
+        [user]: [...(userProducts[user] || []), product],
+      };
+    }
+    case 'DELETE_PRODUCT': {
+      const { user, product } = action;
+      return {
+        ...userProducts,
+        [user]: userProducts[user].filter(
+          userProduct => userProduct.id !== product.id
+        ),
+      };
+    }
+    default:
+      return userProducts;
+  }
+}
+
 function App() {
-  const [state, dispatch] = React.useReducer(appReducer, {
+  const [appState, appDispatch] = React.useReducer(appReducer, {
     user: null,
     page: 'SIGN_IN',
   });
+  const [userProducts, userProductsDispatch] = React.useReducer(
+    userProductsReducer,
+    {}
+  );
+
+  function handleAddProduct(product) {
+    userProductsDispatch({ type: 'ADD_PRODUCT', product, user: appState.user });
+  }
+
+  function handleDeleteProduct(product) {
+    userProductsDispatch({
+      type: 'DELETE_PRODUCT',
+      product,
+      user: appState.user,
+    });
+  }
 
   function handleSignIn(username) {
-    dispatch({ type: 'SIGN_IN', user: username });
+    appDispatch({ type: 'SIGN_IN', user: username });
   }
 
   function handleLogOut() {
-    dispatch({ type: 'LOG_OUT' });
+    appDispatch({ type: 'LOG_OUT' });
   }
 
-  switch (state.page) {
+  switch (appState.page) {
     case 'SIGN_IN':
       return <SignIn onSignIn={handleSignIn} />;
     case 'HOME':
-      return <Home user={state.user} onLogOut={handleLogOut} />;
+      return (
+        <Home
+          products={userProducts[appState.user]}
+          user={appState.user}
+          onLogOut={handleLogOut}
+          onAddProduct={handleAddProduct}
+          onDeleteProduct={handleDeleteProduct}
+        />
+      );
     default:
       return <div>Unknown page</div>;
   }
